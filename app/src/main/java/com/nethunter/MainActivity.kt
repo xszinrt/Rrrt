@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -47,8 +48,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadAndFilterDomains(uri: Uri) {
-        binding.progressFilter.isVisible = true
-        binding.tvFilterStatus.isVisible = true
+        // إظهار شريط التقدم
+        binding.progressFilter.visibility = View.VISIBLE
+        binding.tvFilterStatus.visibility = View.VISIBLE
         binding.btnStart.isEnabled = false
         binding.btnImport.isEnabled = false
 
@@ -67,7 +69,7 @@ class MainActivity : AppCompatActivity() {
                 val totalLines = allDomains.size
                 
                 for ((index, domain) in allDomains.withIndex()) {
-                    // فقط النطاقات التي تنتهي بـ .com
+                    // الاحتفاظ فقط بنطاقات .com
                     if (domain.endsWith(".com")) {
                         comDomains.add(domain)
                     }
@@ -97,14 +99,14 @@ class MainActivity : AppCompatActivity() {
                     }
                     
                     delay(3000)
-                    binding.progressFilter.isVisible = false
-                    binding.tvFilterStatus.isVisible = false
+                    binding.progressFilter.visibility = View.GONE
+                    binding.tvFilterStatus.visibility = View.GONE
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@MainActivity, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
-                    binding.progressFilter.isVisible = false
-                    binding.tvFilterStatus.isVisible = false
+                    binding.progressFilter.visibility = View.GONE
+                    binding.tvFilterStatus.visibility = View.GONE
                     binding.btnImport.isEnabled = true
                 }
             }
@@ -116,10 +118,6 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "لا توجد نطاقات .com للفحص!", Toast.LENGTH_SHORT).show()
             return
         }
-        
-        // عرض أول 5 نطاقات للتأكد
-        val sample = domainList.take(5).joinToString(", ")
-        Toast.makeText(this, "سيتم فحص: $sample", Toast.LENGTH_LONG).show()
         
         val intent = Intent(this, ScanService::class.java).apply {
             putStringArrayListExtra("domains", ArrayList(domainList))
