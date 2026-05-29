@@ -3,7 +3,6 @@ package com.nethunter
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import com.nethunter.ScanService.DomainResult
 import com.nethunter.databinding.ItemDomainBinding
 
 class DomainAdapter : RecyclerView.Adapter<DomainAdapter.ViewHolder>() {

@@ -20,7 +20,6 @@ class ScanService : Service() {
         var registered = 0
         var failed = 0
         val results = mutableListOf<DomainResult>()
-        data class DomainResult(val name: String, val regDate: String?, val expDate: String?)
     }
 
     override fun onCreate() { createNotificationChannel() }
@@ -45,9 +44,17 @@ class ScanService : Service() {
                 if (!isRunning) break
                 try {
                     val info = RdapFetcher.fetch(domain)
-                    if (info != null) { registered++; results.add(DomainResult(domain, info.regDate, info.expDate)) }
-                    else { failed++; results.add(DomainResult(domain, null, null)) }
-                } catch (e: Exception) { failed++; results.add(DomainResult(domain, null, null)) }
+                    if (info != null) { 
+                        registered++ 
+                        results.add(DomainResult(domain, info.regDate, info.expDate))
+                    } else { 
+                        failed++ 
+                        results.add(DomainResult(domain, null, null))
+                    }
+                } catch (e: Exception) { 
+                    failed++ 
+                    results.add(DomainResult(domain, null, null))
+                }
                 progress = index + 1
                 updateNotification()
                 delay(200)
