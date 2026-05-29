@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp">
+    
+    <TextView
+        android:id="@+id/tvDomain"
+        android:text="domain.net"
+        android:textSize="16sp"
+        android:textStyle="bold"/>
+    
+    <TextView
+        android:id="@+id/tvReg"
+        android:text="سجل: --"
+        android:textSize="12sp"/>
+    
+    <TextView
+        android:id="@+id/tvExp"
+        android:text="ينتهي: --"
+        android:textSize="12sp"/>
+    
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#ddd"
+        android:layout_marginTop="8dp"/>
+    
+</LinearLayout>
