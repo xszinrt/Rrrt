@@ -8,10 +8,23 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.util.concurrent.TimeUnit
 
 class ScanService : Service() {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val TAG = "ScanService"
+    
+    // عميل HTTP للفحص السريع
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(5, TimeUnit.SECONDS)
+        .followRedirects(false)
+        .build()
 
     companion object {
         const val ACTION_STOP = "STOP"
@@ -66,26 +79,51 @@ class ScanService : Service() {
                     if (!isRunning) break
                     
                     try {
-                        Log.d(TAG, "Checking domain $index: $domain")
-                        val info = RdapFetcher.fetch(domain)
+                        // استخراج اسم النطاق الأساسي من .com لإضافة .net
+                        val baseName = domain.substring(0, domain.length - 4)
+                        val netDomain = "${baseName}.net"
                         
-                        if (info != null && info.regDate != null) { 
-                            registered++ 
-                            results.add(DomainResult(domain, info.regDate, info.expDate))
-                            Log.d(TAG, "✅ $domain is registered")
-                        } else { 
-                            failed++ 
-                            Log.d(TAG, "❌ $domain is available or error")
+                        Log.d(TAG, "Checking domain ${index + 1}/${total}: $netDomain")
+                        
+                        // الخطوة 1: فحص الحجز عبر طلب HEAD (سريع)
+                        val isRegistered = checkRegistrationViaHead(netDomain)
+                        
+                        if (isRegistered) {
+                            // الخطوة 2: النطاق محجوز -> جلب التاريخ من Verisign RDAP
+                            Log.d(TAG, "✅ $netDomain is registered, fetching expiry date...")
+                            val rdapInfo = fetchRdapInfo(netDomain)
+                            
+                            registered++
+                            results.add(DomainResult(
+                                name = netDomain,
+                                regDate = rdapInfo?.regDate,
+                                expDate = rdapInfo?.expDate
+                            ))
+                            Log.d(TAG, "✅ Added $netDomain to results")
+                        } else {
+                            // النطاق متاح -> نتجاهله
+                            failed++
+                            Log.d(TAG, "❌ $netDomain is available (ignored)")
                         }
-                    } catch (e: Exception) { 
-                        Log.e(TAG, "Error checking $domain: ${e.message}")
-                        failed++ 
+                    } catch (e: ConnectException) {
+                        Log.e(TAG, "Connection error for $domain: ${e.message}")
+                        failed++
+                    } catch (e: SocketTimeoutException) {
+                        Log.e(TAG, "Timeout for $domain: ${e.message}")
+                        failed++
+                    } catch (e: UnknownHostException) {
+                        Log.e(TAG, "Unknown host for $domain: ${e.message}")
+                        failed++
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Unexpected error for $domain: ${e.message}")
+                        failed++
                     }
                     
                     progress = index + 1
                     updateNotification()
                     
-                    delay(200)
+                    // تأخير بين الطلبات لتجنب الحظر
+                    delay(300)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Fatal error in scan: ${e.message}")
@@ -94,8 +132,40 @@ class ScanService : Service() {
                 showCompletionNotification()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
-                Log.d(TAG, "Scan completed")
+                Log.d(TAG, "Scan completed - Registered: $registered, Available/Ignored: $failed")
             }
+        }
+    }
+    
+    /**
+     * فحص حجز النطاق عبر طلب HEAD
+     * يعيد true إذا كان النطاق محجوزاً (يستجيب الخادم)
+     */
+    private fun checkRegistrationViaHead(domain: String): Boolean {
+        return try {
+            val request = Request.Builder()
+                .url("http://$domain")
+                .head()
+                .build()
+            val response = httpClient.newCall(request).execute()
+            val isRegistered = response.code < 400 // 200-399 يعني النطاق محجوز
+            response.close()
+            isRegistered
+        } catch (e: Exception) {
+            // إذا فشل الاتصال، غالباً النطاق غير محجوز أو لا يستجيب
+            false
+        }
+    }
+    
+    /**
+     * جلب معلومات RDAP من Verisign (التاريخ فقط)
+     */
+    private fun fetchRdapInfo(domain: String): RdapInfo? {
+        return try {
+            RdapFetcher.fetch(domain)
+        } catch (e: Exception) {
+            Log.e(TAG, "RDAP fetch failed for $domain: ${e.message}")
+            null
         }
     }
 
@@ -112,6 +182,7 @@ class ScanService : Service() {
         .setContentText("$progress / $total - محجوز: $registered")
         .setSmallIcon(android.R.drawable.ic_menu_search)
         .setProgress(total, progress, false)
+        .setOngoing(true)
         .build()
     
     private fun updateNotification() { 
@@ -122,8 +193,9 @@ class ScanService : Service() {
     private fun showCompletionNotification() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("✅ اكتمل الفحص!")
-            .setContentText("تم فحص $total نطاق - وجدنا $registered نطاق محجوز")
+            .setContentText("تم فحص $total نطاق - وجدنا $registered نطاق .net محجوز")
             .setSmallIcon(android.R.drawable.ic_menu_search)
+            .setAutoCancel(true)
             .build()
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(2, notification)
@@ -132,6 +204,7 @@ class ScanService : Service() {
     private fun createNotificationChannel() { 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(CHANNEL_ID, "فحص النطاقات", NotificationManager.IMPORTANCE_LOW)
+            channel.description = "إشعارات تقدم فحص نطاقات .net"
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
