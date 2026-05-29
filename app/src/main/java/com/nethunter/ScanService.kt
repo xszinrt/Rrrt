@@ -3,6 +3,7 @@ package com.nethunter
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -84,7 +85,6 @@ class ScanService : Service() {
                     progress = index + 1
                     updateNotification()
                     
-                    // تأخير بسيط بين الطلبات
                     delay(200)
                 }
             } catch (e: Exception) {
