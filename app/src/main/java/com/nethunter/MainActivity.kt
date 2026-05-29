@@ -9,6 +9,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,6 +37,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         setupRecyclerView()
         setupClickListeners()
+        setupSearchWatcher()
         requestPermissions()
     }
 
@@ -52,7 +55,16 @@ class MainActivity : AppCompatActivity() {
         binding.btnResume.setOnClickListener { resumeScan() }
         binding.btnExport.setOnClickListener { exportResults() }
         binding.btnCopyAll.setOnClickListener { copyAllDomains() }
-        binding.etSearch.addTextChangedListener { android.text.TextWatcher { afterTextChanged { s -> adapter.filter(s.toString()) } } }
+    }
+
+    private fun setupSearchWatcher() {
+        binding.etSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                adapter.filter(s.toString())
+            }
+        })
     }
 
     private fun loadAndFilterDomains(uri: Uri) {
@@ -166,16 +178,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun exportResults() {
-        // تنفيذ التصدير لاحقاً (اختياري)
         Toast.makeText(this, "سيتم إضافة التصدير قريباً", Toast.LENGTH_SHORT).show()
     }
 
     private fun copyAllDomains() {
-        val domains = adapter.currentList.map { it.name }.joinToString("\n")
+        val domains = adapter.getCurrentList().map { it.name }.joinToString("\n")
         if (domains.isNotEmpty()) {
             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(ClipData.newPlainText("domains", domains))
-            Toast.makeText(this, "تم نسخ ${adapter.currentList.size} نطاق", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "تم نسخ ${adapter.itemCount} نطاق", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(this, "لا توجد نتائج لنسخها", Toast.LENGTH_SHORT).show()
         }

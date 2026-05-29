@@ -13,24 +13,33 @@ import com.nethunter.databinding.ItemDomainBinding
 
 class DomainAdapter : RecyclerView.Adapter<DomainAdapter.ViewHolder>() {
     private var items = listOf<DomainResult>()
-    
-    fun submitList(list: List<DomainResult>) { 
+    private var allItems = listOf<DomainResult>()
+
+    fun submitList(list: List<DomainResult>) {
+        allItems = list
         items = list
-        notifyDataSetChanged() 
+        notifyDataSetChanged()
     }
-    
+
     fun filter(query: String) {
-        // سيتم تنفيذ الفلترة لاحقاً
+        items = if (query.isEmpty()) {
+            allItems
+        } else {
+            allItems.filter { it.name.contains(query, ignoreCase = true) }
+        }
+        notifyDataSetChanged()
     }
-    
+
+    fun getCurrentList(): List<DomainResult> = items
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(ItemDomainBinding.inflate(LayoutInflater.from(parent.context), parent, false))
     }
-    
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) { 
-        holder.bind(items[position]) 
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        holder.bind(items[position])
     }
-    
+
     override fun getItemCount() = items.size
 
     inner class ViewHolder(private val binding: ItemDomainBinding) : RecyclerView.ViewHolder(binding.root) {
@@ -38,7 +47,7 @@ class DomainAdapter : RecyclerView.Adapter<DomainAdapter.ViewHolder>() {
             binding.tvDomain.text = item.name
             binding.tvExp.text = "ينتهي: ${item.expDate ?: "غير معروف"}"
             binding.tvError.visibility = if (item.regDate == null) android.view.View.VISIBLE else android.view.View.GONE
-            
+
             binding.btnGoogle.setOnClickListener {
                 val url = "https://www.google.com/search?q=site:${item.name}"
                 it.context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
