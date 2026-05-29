@@ -9,32 +9,75 @@ data class RdapInfo(val regDate: String?, val expDate: String?)
 
 object RdapFetcher {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
     fun fetch(domain: String): RdapInfo? {
         return try {
-            // نفحص النطاق كما هو تماماً دون تغيير
-            val url = "https://rdap.org/domain/$domain"
-            android.util.Log.d("RdapFetcher", "فحص: $domain -> $url")
+            // التأكد من أن النطاق ينتهي بـ .com
+            if (!domain.endsWith(".com")) {
+                return null
+            }
             
-            val response = client.newCall(Request.Builder().url(url).build()).execute()
-            val json = JSONObject(response.body?.string() ?: return null)
-            val events = json.optJSONArray("events")
-            var regDate: String? = null
-            var expDate: String? = null
-            for (i in 0 until (events?.length() ?: 0)) {
-                val event = events!!.getJSONObject(i)
-                when (event.optString("eventAction")) {
-                    "registration" -> regDate = event.optString("eventDate").takeIf { it.isNotEmpty() }?.substring(0, 10)
-                    "expiration" -> expDate = event.optString("eventDate").takeIf { it.isNotEmpty() }?.substring(0, 10)
+            // استخراج اسم النطاق بدون .com
+            val baseName = domain.substring(0, domain.length - 4)
+            // بناء نطاق .net للفحص (لأن Verisign RDAP مخصص لـ .net)
+            val netDomain = "${baseName}.net"
+            
+            // استخدام RDAP الرسمي من Verisign (مثل صفحة الويب)
+            val url = "https://rdap.verisign.com/net/v1/domain/${netDomain}"
+            android.util.Log.d("RdapFetcher", "فحص: $netDomain -> $url")
+            
+            val request = Request.Builder()
+                .url(url)
+                .header("Accept", "application/rdap+json")
+                .build()
+                
+            val response = client.newCall(request).execute()
+            val statusCode = response.code
+            
+            when (statusCode) {
+                200 -> {
+                    // النطاق مسجل - استخراج التاريخ
+                    val json = JSONObject(response.body?.string() ?: return null)
+                    val events = json.optJSONArray("events")
+                    var regDate: String? = null
+                    var expDate: String? = null
+                    
+                    if (events != null) {
+                        for (i in 0 until events.length()) {
+                            val event = events.getJSONObject(i)
+                            val action = event.optString("eventAction")
+                            val date = event.optString("eventDate")
+                            val formattedDate = date.takeIf { it.isNotEmpty() }?.substring(0, 10)
+                            
+                            when (action) {
+                                "registration" -> regDate = formattedDate
+                                "expiration" -> expDate = formattedDate
+                            }
+                        }
+                    }
+                    
+                    if (regDate != null || expDate != null) {
+                        RdapInfo(regDate, expDate)
+                    } else {
+                        null
+                    }
+                }
+                404 -> {
+                    // النطاق غير مسجل (متاح)
+                    android.util.Log.d("RdapFetcher", "النطاق $netDomain غير مسجل (متاح)")
+                    null
+                }
+                else -> {
+                    android.util.Log.w("RdapFetcher", "استجابة غير متوقعة: $statusCode لـ $netDomain")
+                    null
                 }
             }
-            if (regDate == null && expDate == null) null else RdapInfo(regDate, expDate)
-        } catch (e: Exception) { 
-            android.util.Log.e("RdapFetcher", "فشل فحص $domain: ${e.message}")
-            null 
+        } catch (e: Exception) {
+            android.util.Log.e("RdapFetcher", "فشل فحص ${domain}: ${e.message}")
+            null
         }
     }
 }
