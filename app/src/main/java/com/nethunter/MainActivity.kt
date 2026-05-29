@@ -18,10 +18,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: DomainAdapter
     private var domainList = mutableListOf<String>()
+    private var filteringJob: Job? = null
 
     private val filePicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri ?: return@registerForActivityResult
-        loadDomainsFromUri(uri)
+        loadAndFilterDomains(uri)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,35 +41,94 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
-        binding.btnImport.setOnClickListener { filePicker.launch(arrayOf("text/plain")) }
+        binding.btnImport.setOnClickListener { filePicker.launch(arrayOf("text/plain", "text/csv")) }
         binding.btnStart.setOnClickListener { startScan() }
         binding.btnStop.setOnClickListener { stopScan() }
     }
 
-    private fun loadDomainsFromUri(uri: Uri) {
-        try {
-            val domains = mutableListOf<String>()
-            contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
-                reader.forEachLine { line ->
-                    val trimmed = line.trim().lowercase()
-                    if (trimmed.endsWith(".net")) domains.add(trimmed)
+    private fun loadAndFilterDomains(uri: Uri) {
+        binding.progressFilter.isVisible = true
+        binding.tvFilterStatus.isVisible = true
+        binding.btnStart.isEnabled = false
+        binding.btnImport.isEnabled = false
+
+        filteringJob = CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val allDomains = mutableListOf<String>()
+                val comDomains = mutableListOf<String>()
+                
+                contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
+                    reader.forEachLine { line ->
+                        val trimmed = line.trim().lowercase()
+                        allDomains.add(trimmed)
+                    }
+                }
+                
+                val totalLines = allDomains.size
+                
+                for ((index, domain) in allDomains.withIndex()) {
+                    // فقط النطاقات التي تنتهي بـ .com
+                    if (domain.endsWith(".com")) {
+                        comDomains.add(domain)
+                    }
+                    
+                    if (index % 100 == 0 || index == totalLines - 1) {
+                        val progress = ((index + 1) * 100 / totalLines)
+                        withContext(Dispatchers.Main) {
+                            binding.progressFilter.progress = progress
+                            binding.tvFilterStatus.text = "⏳ جاري التصفية: ${index + 1} / $totalLines ($progress%) - وجدنا ${comDomains.size} نطاق .com"
+                        }
+                    }
+                }
+                
+                domainList = comDomains
+                
+                withContext(Dispatchers.Main) {
+                    binding.progressFilter.progress = 100
+                    binding.tvFilterStatus.text = "✅ تم الاستيراد: ${comDomains.size} نطاق .com من أصل $totalLines سطر"
+                    binding.tvFileName.text = "📄 ${comDomains.size} نطاق .com"
+                    binding.btnStart.isEnabled = comDomains.isNotEmpty()
+                    binding.btnImport.isEnabled = true
+                    
+                    if (comDomains.isEmpty()) {
+                        Toast.makeText(this@MainActivity, "لم يتم العثور على نطاقات .com في الملف!", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(this@MainActivity, "تم استيراد ${comDomains.size} نطاق .com", Toast.LENGTH_SHORT).show()
+                    }
+                    
+                    delay(3000)
+                    binding.progressFilter.isVisible = false
+                    binding.tvFilterStatus.isVisible = false
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "خطأ: ${e.message}", Toast.LENGTH_LONG).show()
+                    binding.progressFilter.isVisible = false
+                    binding.tvFilterStatus.isVisible = false
+                    binding.btnImport.isEnabled = true
                 }
             }
-            domainList = domains
-            binding.tvFileName.text = "✅ ${domains.size} .net"
-            binding.btnStart.isEnabled = domains.isNotEmpty()
-        } catch (e: Exception) {
-            Toast.makeText(this, "خطأ: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun startScan() {
-        if (domainList.isEmpty()) return
+        if (domainList.isEmpty()) {
+            Toast.makeText(this, "لا توجد نطاقات .com للفحص!", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // عرض أول 5 نطاقات للتأكد
+        val sample = domainList.take(5).joinToString(", ")
+        Toast.makeText(this, "سيتم فحص: $sample", Toast.LENGTH_LONG).show()
+        
         val intent = Intent(this, ScanService::class.java).apply {
             putStringArrayListExtra("domains", ArrayList(domainList))
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
-        else startService(intent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
         binding.btnStart.isEnabled = false
         binding.btnStop.isEnabled = true
         startMonitoring()
@@ -102,5 +162,10 @@ class MainActivity : AppCompatActivity() {
                 registerForActivityResult(ActivityResultContracts.RequestPermission()) {}.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        filteringJob?.cancel()
     }
 }

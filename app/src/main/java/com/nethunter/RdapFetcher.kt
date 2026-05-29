@@ -15,7 +15,11 @@ object RdapFetcher {
 
     fun fetch(domain: String): RdapInfo? {
         return try {
-            val response = client.newCall(Request.Builder().url("https://rdap.org/domain/$domain").build()).execute()
+            // نفحص النطاق كما هو تماماً دون تغيير
+            val url = "https://rdap.org/domain/$domain"
+            android.util.Log.d("RdapFetcher", "فحص: $domain -> $url")
+            
+            val response = client.newCall(Request.Builder().url(url).build()).execute()
             val json = JSONObject(response.body?.string() ?: return null)
             val events = json.optJSONArray("events")
             var regDate: String? = null
@@ -28,6 +32,9 @@ object RdapFetcher {
                 }
             }
             if (regDate == null && expDate == null) null else RdapInfo(regDate, expDate)
-        } catch (e: Exception) { null }
+        } catch (e: Exception) { 
+            android.util.Log.e("RdapFetcher", "فشل فحص $domain: ${e.message}")
+            null 
+        }
     }
 }
