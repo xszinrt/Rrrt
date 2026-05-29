@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark">#0A0E17</color>       <!-- خلفية رئيسية -->
+    <color name="bg_card">#141A26</color>        <!-- خلفية البطاقات والوحدات -->
+    <color name="text_primary">#FFFFFF</color>   <!-- النص الأساسي -->
+    <color name="text_secondary">#9CA3AF</color> <!-- النص الثانوي -->
+    <color name="accent_red">#DC2626</color>     <!-- أحمر قرمزي للعناوين والأعداد -->
+    <color name="accent_green">#10B981</color>   <!-- أخضر فاقع للتقدم والأزرار الخضراء -->
+    <color name="accent_yellow">#F59E0B</color>  <!-- أصفر لأزرار الإيقاف المؤقت -->
+    <color name="accent_blue">#3B82F6</color>    <!-- أزرق لأزرار التصدير والنسخ -->
+    <color name="button_dark">#1F2937</color>    <!-- خلفية الأزرار الداكنة -->
+    <color name="error_red">#EF4444</color>      <!-- أحمر الأخطاء -->
+    <color name="progress_green">#22C55E</color> <!-- أخضر شريط التقدم -->
+</resources>

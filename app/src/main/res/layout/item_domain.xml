@@ -3,28 +3,102 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="12dp">
-    
-    <TextView
-        android:id="@+id/tvDomain"
-        android:text="domain.net"
-        android:textSize="16sp"
-        android:textStyle="bold"/>
-    
-    <TextView
-        android:id="@+id/tvReg"
-        android:text="سجل: --"
-        android:textSize="12sp"/>
-    
-    <TextView
-        android:id="@+id/tvExp"
-        android:text="ينتهي: --"
-        android:textSize="12sp"/>
-    
-    <View
+    android:background="@color/bg_card"
+    android:padding="16dp"
+    android:layout_marginBottom="8dp"
+    android:radius="12dp">
+
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#ddd"
-        android:layout_marginTop="8dp"/>
-    
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tvDomain"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="domain.net"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/ivStatus"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@android:drawable/ic_menu_rotate"
+            android:tint="@color/accent_yellow" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@android:drawable/ic_menu_recent_history"
+            android:tint="@color/text_secondary" />
+
+        <TextView
+            android:id="@+id/tvExp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="ينتهي: غير معروف"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvError"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="فشل الفحص"
+        android:textColor="@color/error_red"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp">
+
+        <Button
+            android:id="@+id/btnGoogle"
+            android:text="Google"
+            android:backgroundTint="@color/button_dark"
+            android:textColor="@color/accent_blue"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btnCopy"
+            android:text="نسخ"
+            android:backgroundTint="@color/button_dark"
+            android:textColor="@color/accent_blue"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btnOpen"
+            android:text="فتح"
+            android:backgroundTint="@color/button_dark"
+            android:textColor="@color/accent_blue"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+    </LinearLayout>
+
 </LinearLayout>
